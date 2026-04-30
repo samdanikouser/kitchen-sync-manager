@@ -13,7 +13,3 @@ services:
         generateValue: true
       - key: SEED_ADMIN
         value: "true"
-    disk:
-      name: kitchen-data
-      mountPath: /app/data
-      sizeGB: 1
