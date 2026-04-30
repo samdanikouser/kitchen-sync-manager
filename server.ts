@@ -581,7 +581,7 @@ app.delete('/api/recipes/:id', authenticateToken, async (req, res) => {
 // ============================================================
 app.get('/api/settings', authenticateToken, async (_req, res) => {
   try {
-    const result = await db.query('SELECT value FROM settings WHERE key = $1', ['config']);
+    const result = await db.query('SELECT value FROM settings WHERE "key" = $1', ['config']);
     const row = result.rows[0];
     if (row) {
       res.json(JSON.parse(row.value));
@@ -599,8 +599,8 @@ app.get('/api/settings', authenticateToken, async (_req, res) => {
 app.post('/api/settings', authenticateToken, requireAdmin, validate(settingsSchema), async (req, res) => {
   try {
     await db.transaction(async () => {
-      await db.query('DELETE FROM settings WHERE key = $1', ['config']);
-      await db.query('INSERT INTO settings (key, value) VALUES ($1, $2)', ['config', JSON.stringify(req.body)]);
+      await db.query('DELETE FROM settings WHERE "key" = $1', ['config']);
+      await db.query('INSERT INTO settings ("key", value) VALUES ($1, $2)', ['config', JSON.stringify(req.body)]);
     });
     res.json(req.body);
   } catch (err: any) {
