@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: kitchen-sync-manager
+    runtime: node
+    region: frankfurt
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npx tsx server.ts
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SEED_ADMIN
+        value: "true"
+    disk:
+      name: kitchen-data
+      mountPath: /app/data
+      sizeGB: 1
