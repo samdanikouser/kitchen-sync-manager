@@ -176,135 +176,126 @@ function Navbar({ user, onLogout, onInstall }: { user: AppUser | null, onLogout:
 
 function Login({ onLogin }: { onLogin: (user: AppUser) => void }) {
   const { refreshSettings } = useSettings();
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [tab, setTab] = useState<'login' | 'register'>('login');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [orgName, setOrgName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    
-    if (!username || !password || (isSignUp && !name)) {
-      setError('Please fill in all fields.');
-      return;
-    }
-
     setLoading(true);
     setError(null);
-
     try {
-      if (isSignUp) {
-        const user = await api.auth.register({ username, password, displayName: name });
+      if (tab === 'register') {
+        if (!orgName || !username || !password || !name) { setError('Please fill in all fields.'); setLoading(false); return; }
+        const user = await api.org.register({ orgName, username, password, displayName: name });
         onLogin(user);
         refreshSettings();
       } else {
+        if (!username || !password) { setError('Please fill in all fields.'); setLoading(false); return; }
         const user = await api.auth.login({ username, password });
         onLogin(user);
         refreshSettings();
       }
     } catch (err: any) {
-      setError(err.message || 'An error occurred during authentication.');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+      setError(err.message || 'An error occurred.');
+    } finally { setLoading(false); }
   };
 
   return (
     <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4">
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-8 shadow-xl shadow-zinc-100"
-      >
-        <div className="flex flex-col items-center text-center">
-          <div className="mb-6 rounded-full bg-zinc-900 p-4 text-white">
-            <ChefHat className="h-10 w-10" />
-          </div>
-          <h1 className="mb-2 text-2xl font-bold tracking-tight text-zinc-900">
-            {isSignUp ? 'Create Account' : 'Welcome Back'}
-          </h1>
-          <p className="mb-8 text-sm text-zinc-500">
-            {isSignUp 
-              ? 'Join us to start managing your kitchen.' 
-              : 'Sign in to manage your kitchen inventory and market list.'}
-          </p>
+      <div className="w-full max-w-md space-y-6">
+        {/* Pricing Banner */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50 p-5 text-center shadow-sm"
+        >
+          <div className="mb-2 text-2xl">🎉</div>
+          <p className="text-sm font-semibold text-emerald-800">Free for 7 days — no credit card required!</p>
+          <p className="mt-1 text-xs text-emerald-600">Then just <span className="font-bold text-emerald-900">$99/month</span> for unlimited access.</p>
+        </motion.div>
 
-          <form onSubmit={handleSubmit} className="w-full space-y-4">
-            {isSignUp && (
-              <div className="relative">
-                <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
-                <input
-                  type="text"
-                  placeholder="Full Name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full rounded-lg border border-zinc-200 bg-zinc-50 py-2.5 pl-10 pr-4 text-sm outline-none transition-all focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900"
-                />
-              </div>
-            )}
-            
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
-              <input
-                type="text"
-                placeholder="Email or Username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="w-full rounded-lg border border-zinc-200 bg-zinc-50 py-2.5 pl-10 pr-4 text-sm outline-none transition-all focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900"
-              />
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-2xl border border-zinc-200 bg-white p-8 shadow-xl shadow-zinc-100"
+        >
+          <div className="flex flex-col items-center text-center">
+            <div className="mb-6 rounded-full bg-zinc-900 p-4 text-white">
+              <ChefHat className="h-10 w-10" />
             </div>
 
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
-              <input
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-lg border border-zinc-200 bg-zinc-50 py-2.5 pl-10 pr-4 text-sm outline-none transition-all focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900"
-              />
+            {/* Tabs */}
+            <div className="mb-6 flex w-full rounded-lg bg-zinc-100 p-1">
+              <button
+                onClick={() => { setTab('login'); setError(null); }}
+                className={cn("flex-1 rounded-md py-2 text-sm font-medium transition-all",
+                  tab === 'login' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500 hover:text-zinc-700")}
+              >Sign In</button>
+              <button
+                onClick={() => { setTab('register'); setError(null); }}
+                className={cn("flex-1 rounded-md py-2 text-sm font-medium transition-all",
+                  tab === 'register' ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500 hover:text-zinc-700")}
+              >Register Organization</button>
             </div>
 
-            {error && (
-              <motion.div 
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                className="text-xs text-red-500 text-left px-1"
-              >
-                {error}
-              </motion.div>
-            )}
+            <h1 className="mb-2 text-2xl font-bold tracking-tight text-zinc-900">
+              {tab === 'register' ? 'Create Your Organization' : 'Welcome Back'}
+            </h1>
+            <p className="mb-6 text-sm text-zinc-500">
+              {tab === 'register'
+                ? 'Start your 7-day free trial. Set up your kitchen in minutes.'
+                : 'Sign in to manage your kitchen inventory.'}
+            </p>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-zinc-900 py-3 text-sm font-semibold text-white transition-all hover:bg-zinc-800 disabled:opacity-70 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-2"
-            >
-              {loading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                isSignUp ? 'Sign Up' : 'Sign In'
+            <form onSubmit={handleSubmit} className="w-full space-y-4">
+              {tab === 'register' && (
+                <>
+                  <div className="relative">
+                    <ShoppingBag className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+                    <input type="text" placeholder="Organization Name" value={orgName}
+                      onChange={(e) => setOrgName(e.target.value)}
+                      className="w-full rounded-lg border border-zinc-200 bg-zinc-50 py-2.5 pl-10 pr-4 text-sm outline-none transition-all focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900" />
+                  </div>
+                  <div className="relative">
+                    <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+                    <input type="text" placeholder="Your Full Name" value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="w-full rounded-lg border border-zinc-200 bg-zinc-50 py-2.5 pl-10 pr-4 text-sm outline-none transition-all focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900" />
+                  </div>
+                </>
               )}
-            </button>
-          </form>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+                <input type="text" placeholder="Username" value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="w-full rounded-lg border border-zinc-200 bg-zinc-50 py-2.5 pl-10 pr-4 text-sm outline-none transition-all focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900" />
+              </div>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+                <input type="password" placeholder="Password" value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full rounded-lg border border-zinc-200 bg-zinc-50 py-2.5 pl-10 pr-4 text-sm outline-none transition-all focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900" />
+              </div>
 
-          <div className="mt-6 text-sm text-zinc-500">
-            {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
-            <button
-              onClick={() => {
-                setIsSignUp(!isSignUp);
-                setError(null);
-              }}
-              className="font-semibold text-zinc-900 hover:underline"
-            >
-              {isSignUp ? 'Sign In' : 'Sign Up'}
-            </button>
+              {error && (
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
+                  className="text-xs text-red-500 text-left px-1">{error}</motion.div>
+              )}
+
+              <button type="submit" disabled={loading}
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-zinc-900 py-3 text-sm font-semibold text-white transition-all hover:bg-zinc-800 disabled:opacity-70 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:ring-offset-2">
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> :
+                  tab === 'register' ? 'Start Free Trial' : 'Sign In'}
+              </button>
+            </form>
           </div>
-        </div>
-      </motion.div>
+        </motion.div>
+      </div>
     </div>
   );
 }

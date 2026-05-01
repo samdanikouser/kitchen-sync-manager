@@ -27,6 +27,13 @@ export const api = {
     register: (userData: any) => request('/api/auth/register', { method: 'POST', body: JSON.stringify(userData) }),
     logout: () => request('/api/auth/logout', { method: 'POST' }),
   },
+  org: {
+    register: (data: any) => request('/api/org/register', { method: 'POST', body: JSON.stringify(data) }),
+  },
+  license: {
+    get: () => request('/api/license'),
+    subscribe: () => request('/api/license/subscribe', { method: 'POST' }),
+  },
   items: {
     list: (): Promise<Item[]> => request('/api/items'),
     create: (item: Item) => request('/api/items', { method: 'POST', body: JSON.stringify(item) }),

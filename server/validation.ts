@@ -97,3 +97,11 @@ export const updateUserSchema = z.object({
   password: z.string().min(6).max(255).optional(),
   displayName: z.string().min(1).max(255).trim(),
 });
+
+// --- Organization Registration ---
+export const orgRegisterSchema = z.object({
+  orgName: z.string().min(2).max(255).trim(),
+  username: z.string().min(1).max(255).trim(),
+  password: z.string().min(6).max(255),
+  displayName: z.string().min(1).max(255).trim(),
+});
