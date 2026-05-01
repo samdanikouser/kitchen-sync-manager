@@ -9,6 +9,7 @@ import jwt from 'jsonwebtoken';
 import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
 import { ZodError, type ZodSchema } from 'zod';
+import Stripe from 'stripe';
 import { db, initDb, dbType } from './server/db.ts';
 import {
   loginSchema, registerSchema,
@@ -60,6 +61,39 @@ const PORT = parseInt(process.env.PORT || '3000', 10);
 // ============================================================
 // GLOBAL MIDDLEWARE
 // ============================================================
+// Stripe webhook needs raw body BEFORE json parser
+const stripeWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET || '';
+app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
+  if (!stripe) return res.status(500).json({ error: 'Stripe not configured' });
+  let event: Stripe.Event;
+  try {
+    if (stripeWebhookSecret) {
+      event = stripe.webhooks.constructEvent(req.body, req.headers['stripe-signature'] as string, stripeWebhookSecret);
+    } else {
+      event = JSON.parse(req.body.toString()) as Stripe.Event;
+    }
+  } catch (err: any) {
+    console.error('Stripe webhook signature failed:', err.message);
+    return res.status(400).json({ error: 'Webhook signature verification failed' });
+  }
+
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object as Stripe.Checkout.Session;
+    const orgId = session.metadata?.orgId;
+    if (orgId) {
+      const now = new Date();
+      const end = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      await db.query(
+        'INSERT INTO licenses (id, org_id, plan_type, status, subscription_start, subscription_end, amount, currency) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
+        [randomUUID(), orgId, 'subscription', 'active', now.toISOString(), end.toISOString(), 99, 'USD']
+      );
+      console.log(`Subscription activated for org ${orgId} via Stripe payment`);
+    }
+  }
+  res.json({ received: true });
+});
+
 app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
 
@@ -266,16 +300,41 @@ app.get('/api/license', authenticateToken, async (req: any, res) => {
 });
 
 app.post('/api/license/subscribe', authenticateToken, requireAdmin, async (req: any, res) => {
+  const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
+  if (!stripe) {
+    // Fallback: direct activation for testing without Stripe
+    try {
+      const orgId = req.user.orgId;
+      const now = new Date();
+      const end = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      await db.query(
+        'INSERT INTO licenses (id, org_id, plan_type, status, subscription_start, subscription_end, amount, currency) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
+        [randomUUID(), orgId, 'subscription', 'active', now.toISOString(), end.toISOString(), 99, 'USD']
+      );
+      return res.json({ message: 'Subscription activated (test mode — no Stripe key configured)', expiresAt: end.toISOString() });
+    } catch (err: any) { return errorResponse(res, 500, 'Subscription failed', err); }
+  }
+
+  // Create Stripe Checkout session
   try {
-    const orgId = req.user.orgId;
-    const now = new Date();
-    const end = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-    await db.query(
-      'INSERT INTO licenses (id, org_id, plan_type, status, subscription_start, subscription_end, amount, currency) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
-      [randomUUID(), orgId, 'subscription', 'active', now.toISOString(), end.toISOString(), 99, 'USD']
-    );
-    res.json({ message: 'Subscription activated for 30 days', expiresAt: end.toISOString() });
-  } catch (err: any) { errorResponse(res, 500, 'Subscription failed', err); }
+    const origin = `${req.protocol}://${req.get('host')}`;
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      mode: 'payment',
+      line_items: [{
+        price_data: {
+          currency: 'usd',
+          product_data: { name: 'KitchenSync Pro — Monthly Subscription', description: '30-day access to all features' },
+          unit_amount: 9900, // $99.00 in cents
+        },
+        quantity: 1,
+      }],
+      metadata: { orgId: req.user.orgId },
+      success_url: `${origin}/subscription?payment=success`,
+      cancel_url: `${origin}/subscription?payment=cancelled`,
+    });
+    res.json({ checkoutUrl: session.url });
+  } catch (err: any) { errorResponse(res, 500, 'Failed to create checkout session', err); }
 });
 
 // ============================================================
