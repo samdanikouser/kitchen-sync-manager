@@ -19,7 +19,8 @@ import {
   FileText,
   Settings as SettingsIcon,
   Loader2,
-  Monitor
+  Monitor,
+  CreditCard
 } from 'lucide-react';
 import { cn } from './lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
@@ -34,6 +35,7 @@ import Receive from './pages/Receive';
 import MarketList from './pages/MarketList';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
+import Subscription from './pages/Subscription';
 import { SettingsProvider } from './lib/SettingsContext';
 
 const SIDEBAR_ITEMS = [
@@ -45,6 +47,7 @@ const SIDEBAR_ITEMS = [
   { name: 'Recipe Master', path: '/recipes', icon: BookText },
   { name: 'Item Master', path: '/items', icon: Package },
   { name: 'Reports', path: '/reports', icon: FileText },
+  { name: 'Subscription', path: '/subscription', icon: CreditCard },
   { name: 'Settings', path: '/settings', icon: SettingsIcon },
 ];
 
@@ -77,7 +80,7 @@ function Navbar({ user, onLogout, onInstall }: { user: AppUser | null, onLogout:
                 Install App
               </button>
             )}
-            {SIDEBAR_ITEMS.map((item) => (
+            {user && SIDEBAR_ITEMS.map((item) => (
               <Link
                 key={item.path}
                 to={item.path}
@@ -392,6 +395,7 @@ export default function App() {
                 <Route path="/sales" element={<SalesEntry />} />
                 <Route path="/receive" element={<Receive />} />
                 <Route path="/reports" element={<Reports />} />
+                <Route path="/subscription" element={<Subscription />} />
                 <Route path="/settings" element={<Settings />} />
               </Routes>
             )}
