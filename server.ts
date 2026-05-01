@@ -293,6 +293,17 @@ const seedAdmin = async () => {
       // Ensure existing admin has admin role
       await db.query('UPDATE users SET role = $1 WHERE username = $2', ['admin', 'admin']);
     }
+
+    // Seed default settings if not present
+    const settingsResult = await db.query('SELECT value FROM settings WHERE "key" = $1', ['config']);
+    if (!settingsResult.rows[0]) {
+      const defaultSettings = JSON.stringify({
+        categories: ['Vegetables', 'Dairy', 'Dry Goods', 'Meat', 'Seafood', 'Poultry'],
+        currency: { symbol: 'R', code: 'ZAR' },
+      });
+      await db.query('INSERT INTO settings ("key", value) VALUES ($1, $2)', ['config', defaultSettings]);
+      console.log('Seeded default application settings.');
+    }
   } catch (err) {
     console.warn('Admin seeding skipped:', err);
   }
@@ -596,7 +607,7 @@ app.get('/api/settings', authenticateToken, async (_req, res) => {
   }
 });
 
-app.post('/api/settings', authenticateToken, requireAdmin, validate(settingsSchema), async (req, res) => {
+app.post('/api/settings', authenticateToken, validate(settingsSchema), async (req, res) => {
   try {
     await db.transaction(async () => {
       await db.query('DELETE FROM settings WHERE "key" = $1', ['config']);
